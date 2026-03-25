@@ -3,70 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FB Pro Player</title>
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <title>FB Player Pro</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 550px; text-align: center; }
-        input { width: 90%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px; }
-        #video-placeholder { width: 100%; background: #000; min-height: 300px; border-radius: 8px; overflow: hidden; }
-        .loading { color: #65676b; font-size: 14px; margin-top: 10px; display: none; }
+        :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-red: #fa3e3e; }
+        body { font-family: -apple-system, sans-serif; background: var(--fb-bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 550px; text-align: center; }
+        input { width: 100%; box-sizing: border-box; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; outline: none; }
+        input:focus { border-color: var(--fb-blue); }
+        
+        #status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 20px; display: none; text-transform: uppercase; }
+        .badge-reel { background: #e7f3ff; color: var(--fb-blue); }
+        .badge-live { background: #ffebe9; color: var(--fb-red); }
+
+        .video-box { width: 100%; background: #000; border-radius: 8px; overflow: hidden; display: none; min-height: 315px; }
+        .hint { font-size: 12px; color: #65676b; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div id="fb-root"></div>
-    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
-    
-    <script>
-      window.fbAsyncInit = function() {
-        FB.init({
-          appId      : '809261578856144', // <--- PASTE YOUR APP ID HERE
-          xfbml      : true,
-          version    : 'v21.0'
-        });
-      };
-    </script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v21.0&appId=809261578856144"></script>
 
     <div class="container">
-        <h2>FB Live & Reel Player</h2>
-        <input type="text" id="fb-url" placeholder="Paste link here (Reel, Live, or Video)">
-        <div id="status" class="loading">Loading video...</div>
+        <h2>Facebook Player</h2>
+        <input type="text" id="fbInput" placeholder="Paste link (Reel, Live, or Share) here...">
         
-        <div id="video-placeholder">
-            <div id="player-target"></div>
+        <div id="status-badge"></div>
+        
+        <div id="video-box" class="video-box">
+            <div id="video-target"></div>
         </div>
+        
+        <p class="hint">App ID: 809261578856144 Active</p>
     </div>
 
     <script>
-        const input = document.getElementById('fb-url');
-        const status = document.getElementById('status');
-        const target = document.getElementById('player-target');
-
-        input.addEventListener('input', function(e) {
-            let url = e.target.value.trim();
-            
-            if (url.includes('facebook.com')) {
-                status.style.display = 'block';
-                
-                // Clean the URL (remove tracking junk)
-                let cleanUrl = url.split('?')[0];
-
-                // Inject the FB-specific tag
-                target.innerHTML = `<div class="fb-video" 
-                    data-href="${cleanUrl}" 
-                    data-width="500" 
-                    data-allowfullscreen="true"
-                    data-autoplay="true"
-                    data-show-text="false"></div>`;
-
-                // Tell the SDK to process the new tag
-                if (window.FB) {
-                    FB.XFBML.parse(document.getElementById('video-placeholder'), function() {
-                        status.style.display = 'none';
-                    });
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+        const input = document.getElementById('fbInput');
+        const box = document.getElementById('video-box');
+        const target = document.getElementById('video-target');
+        const badge = document.getElementById('status-
