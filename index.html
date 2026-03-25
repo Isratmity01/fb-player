@@ -3,122 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal FB Video Player</title>
+    <title>Ultimate FB Video Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .video-container {
             position: relative;
             width: 100%;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            padding-bottom: 56.25%; /* 16:9 */
             height: 0;
-            overflow: hidden;
-            background: #000;
+            background: #111;
             border-radius: 12px;
+            overflow: hidden;
         }
-        /* Reel / Portrait Mode */
-        .video-container.portrait {
-            padding-bottom: 177.77%; /* 9:16 Aspect Ratio */
-        }
-        .video-container iframe {
+        .portrait { padding-bottom: 177.77% !important; } /* 9:16 */
+        iframe {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             border: none;
         }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4">
+<body class="bg-gray-950 text-white min-h-screen p-4 font-sans">
 
-    <div class="w-full max-w-2xl mt-10">
-        <h1 class="text-3xl font-bold text-center mb-6 text-blue-500">FB Universal Player</h1>
-        
-        <!-- Input Section -->
-        <div class="flex gap-2 mb-8">
-            <input type="text" id="fbUrl" 
-                placeholder="Paste Reel, Live, or Video URL here..." 
-                class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500 transition-all">
-            <button onclick="playVideo()" 
-                class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-bold transition-all">
-                PLAY
-            </button>
+    <div class="max-w-3xl mx-auto mt-10">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-blue-500 mb-2">FB Player Pro</h1>
+            <p class="text-gray-400">Works with Reels, Live, and Share links</p>
+        </header>
+
+        <!-- Input Box -->
+        <div class="bg-gray-900 p-6 rounded-2xl shadow-xl border border-gray-800">
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="fbUrl" 
+                    placeholder="Paste link here (e.g., https://www.facebook.com/share/v/...)" 
+                    class="flex-1 p-4 rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500 outline-none text-white transition-all">
+                <button onclick="processVideo()" id="playBtn"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-4 rounded-xl transition-all flex items-center justify-center">
+                    <span id="btnText">PLAY VIDEO</span>
+                </button>
+            </div>
+            <p id="errorLog" class="text-red-400 mt-3 text-sm hidden"></p>
         </div>
 
-        <!-- Player Area -->
-        <div id="playerWrapper" class="hidden">
-            <div id="vidContainer" class="video-container shadow-2xl">
-                <iframe id="fbIframe" 
-                    src="" 
-                    scrolling="no" 
-                    frameborder="0" 
-                    allowfullscreen="true" 
-                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-                </iframe>
+        <!-- Video Display -->
+        <div id="playerSection" class="mt-8 hidden">
+            <div id="vidContainer" class="video-container shadow-2xl border border-gray-800">
+                <iframe id="fbIframe" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"></iframe>
             </div>
             
-            <div class="mt-4 flex justify-between items-center text-sm text-gray-400">
-                <p id="statusTxtText">Playing content from Facebook</p>
-                <button onclick="toggleAspect()" class="text-blue-400 hover:underline">Switch Aspect Ratio (16:9 / 9:16)</button>
+            <div class="mt-4 flex flex-wrap gap-4 justify-between items-center bg-gray-900 p-4 rounded-xl">
+                <div>
+                    <span class="text-xs font-bold text-gray-500 uppercase block">Currently Playing</span>
+                    <span id="playingUrl" class="text-sm text-blue-400 break-all"></span>
+                </div>
+                <button onclick="toggleRatio()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider">
+                    🔄 Switch Aspect Ratio
+                </button>
             </div>
-        </div>
-
-        <!-- Help Info -->
-        <div id="instructions" class="mt-10 text-gray-500 text-center text-sm">
-            <p>Supports: facebook.com/reels, fb.watch, facebook.com/live, etc.</p>
-            <p class="mt-2 italic text-gray-600">Note: Private videos cannot be played outside of Facebook.</p>
         </div>
     </div>
 
     <script>
-        function playVideo() {
-            const inputUrl = document.getElementById('fbUrl').value.trim();
+        async function processVideo() {
+            const input = document.getElementById('fbUrl').value.trim();
+            const btnText = document.getElementById('btnText');
+            const errorLog = document.getElementById('errorLog');
+            const playerSection = document.getElementById('playerSection');
             const iframe = document.getElementById('fbIframe');
-            const wrapper = document.getElementById('playerWrapper');
-            const container = document.getElementById('vidContainer');
-            const instructions = document.getElementById('instructions');
+            const playingUrlTxt = document.getElementById('playingUrl');
 
-            if (!inputUrl) {
-                alert("Please paste a URL first!");
-                return;
-            }
+            if (!input) return;
 
-            // 1. Clean the URL (Remove tracking parameters like mibextid)
+            // Reset UI
+            errorLog.classList.add('hidden');
+            btnText.innerHTML = '<span class="loader"></span> Resolving...';
+            
+            let finalUrl = input;
+
             try {
-                const urlObj = new URL(inputUrl);
-                // Keep only the main link
-                const cleanUrl = urlObj.origin + urlObj.pathname + (urlObj.searchParams.get('v') ? '?v=' + urlObj.searchParams.get('v') : '');
-                
-                // 2. Encode for the Facebook Plugin
-                const encodedUrl = encodeURIComponent(inputUrl);
-                
-                // 3. Set the official Facebook Embed Plugin Source
-                const embedSrc = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1`;
-
-                // 4. Auto-detect if it's a Reel for Aspect Ratio
-                if (inputUrl.includes('reels') || inputUrl.includes('reel')) {
-                    container.classList.add('portrait');
-                } else {
-                    container.classList.remove('portrait');
+                // HANDLE SHARE LINKS (The link you provided)
+                // We use a CORS proxy to find the real destination of the /share/ redirect
+                if (input.includes('facebook.com/share')) {
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(input)}`;
+                    const response = await fetch(proxyUrl);
+                    const data = await response.json();
+                    
+                    // AllOrigins returns the page content. We look for the "canonical" link in the HTML
+                    const match = data.contents.match(/<link rel="canonical" href="([^"]+)"/);
+                    if (match && match[1]) {
+                        finalUrl = match[1];
+                    }
                 }
 
-                // 5. Update UI
-                iframe.src = embedSrc;
-                wrapper.classList.remove('hidden');
-                instructions.classList.add('hidden');
-            } catch (e) {
-                alert("Invalid URL format. Please copy a link from Facebook.");
+                // Clean URL (remove FB tracking tokens)
+                const urlObj = new URL(finalUrl);
+                const cleanUrl = urlObj.origin + urlObj.pathname + (urlObj.searchParams.get('v') ? '?v=' + urlObj.searchParams.get('v') : '');
+
+                // Setup Embed
+                const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=0&autoplay=1`;
+                
+                // Detect Portrait (Reels)
+                const isReel = cleanUrl.includes('reel') || cleanUrl.includes('reels');
+                if (isReel) {
+                    document.getElementById('vidContainer').classList.add('portrait');
+                } else {
+                    document.getElementById('vidContainer').classList.remove('portrait');
+                }
+
+                // Load to Iframe
+                iframe.src = embedUrl;
+                playingUrlTxt.innerText = cleanUrl;
+                playerSection.classList.remove('hidden');
+
+            } catch (err) {
+                errorLog.innerText = "Error: Could not resolve link. Make sure it's a public video.";
+                errorLog.classList.remove('hidden');
+            } finally {
+                btnText.innerText = "PLAY VIDEO";
             }
         }
 
-        function toggleAspect() {
-            const container = document.getElementById('vidContainer');
-            container.classList.toggle('portrait');
+        function toggleRatio() {
+            document.getElementById('vidContainer').classList.toggle('portrait');
         }
 
-        // Allow "Enter" key to trigger play
-        document.getElementById('fbUrl').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') playVideo();
+        // Handle Enter Key
+        document.getElementById('fbUrl').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processVideo();
         });
     </script>
 </body>
