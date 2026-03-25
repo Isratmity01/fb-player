@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FB Live & Reel Player</title>
+    <style>
+        :root {
+            --fb-blue: #1877f2;
+            --bg-gray: #f0f2f5;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            background: var(--bg-gray); 
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h2 { color: var(--fb-blue); margin-bottom: 20px; }
+        input { 
+            width: 100%; 
+            box-sizing: border-box;
+            padding: 14px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: var(--fb-blue); }
+        .info { margin: 10px 0; font-size: 13px; color: #65676b; }
+        
+        .video-wrapper { 
+            margin-top: 25px;
+            width: 100%; 
+            background: #000; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            display: none; /* Hidden until link is pasted */
+            line-height: 0;
+        }
+        iframe { 
+            width: 100%; 
+            border: none; 
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Facebook Player</h2>
+        <input type="text" id="fbLink" placeholder="Paste Live, Reel, or Share link here...">
+        <p class="info">Supports: facebook.com/share, /reel, /watch, and Live</p>
+
+        <div id="playerWrapper" class="video-wrapper">
+            <iframe id="fbPlayer" src="" 
+                scrolling="no" 
+                frameborder="0" 
+                allowfullscreen="true" 
+                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+            </iframe>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('fbLink');
+        const wrapper = document.getElementById('playerWrapper');
+        const iframe = document.getElementById('fbPlayer');
+
+        input.addEventListener('input', (e) => {
+            let rawUrl = e.target.value.trim();
+            
+            if (rawUrl.includes('facebook.com')) {
+                let cleanUrl = rawUrl;
+
+                // 1. Convert 'share' links to direct video links
+                if (rawUrl.includes('/share/v/')) {
+                    const videoId = rawUrl.split('/v/')[1].split('/')[0];
+                    cleanUrl = `https://www.facebook.com/video.php?v=${videoId}`;
+                } 
+                else if (rawUrl.includes('/share/r/')) {
+                    const reelId = rawUrl.split('/r/')[1].split('/')[0];
+                    cleanUrl = `https://www.facebook.com/reel/${reelId}`;
+                }
+
+                // 2. Strip tracking parameters (?mibextid, etc)
+                cleanUrl = cleanUrl.split('?')[0];
+
+                // 3. Construct the Facebook Embedded Player URL
+                // We use &show_text=0 to keep it clean
+                const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=0&width=500`;
+                
+                // 4. Update the iframe
+                iframe.src = embedUrl;
+                wrapper.style.display = 'block';
+
+                // 5. Dynamic Sizing: Tall for Reels, Wide for Videos/Live
+                if (cleanUrl.includes('/reel/')) {
+                    iframe.style.aspectRatio = "9/16";
+                    iframe.style.height = "700px"; 
+                } else {
+                    iframe.style.aspectRatio = "16/9";
+                    iframe.style.height = "350px";
+                }
+            } else {
+                // Hide if input is cleared or invalid
+                wrapper.style.display = 'none';
+                iframe.src = "";
+            }
+        });
+    </script>
+
+</body>
+</html>
