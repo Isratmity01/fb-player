@@ -3,145 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="referrer" content="no-referrer-when-downgrade">
-    <title>FB Live & Reel Player</title>
+    <title>Universal FB Video Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --fb-blue: #1877f2;
-            --fb-bg: #f0f2f5;
-            --fb-red: #fa3e3e;
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+            background: #000;
+            border-radius: 12px;
         }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background-color: var(--fb-bg); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 20px; 
-            margin: 0;
+        /* Reel / Portrait Mode */
+        .video-container.portrait {
+            padding-bottom: 177.77%; /* 9:16 Aspect Ratio */
         }
-        .container { 
-            background: white; 
-            padding: 25px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-            width: 100%; 
-            max-width: 550px; 
-            text-align: center; 
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
         }
-        h2 { color: var(--fb-blue); margin-top: 0; }
-        input { 
-            width: 100%; 
-            box-sizing: border-box; 
-            padding: 15px; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
-            font-size: 16px; 
-            margin-bottom: 10px; 
-            outline: none;
-            transition: border-color 0.3s;
-        }
-        input:focus { border-color: var(--fb-blue); }
-
-        /* Status Badge */
-        #status-badge { 
-            display: inline-block; 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-size: 13px; 
-            font-weight: bold; 
-            margin-bottom: 20px; 
-            display: none; 
-            text-transform: uppercase;
-        }
-        .badge-reel { background: #e7f3ff; color: var(--fb-blue); }
-        .badge-live { background: #ffebe9; color: var(--fb-red); }
-
-        .video-box { 
-            width: 100%; 
-            background: #000; 
-            border-radius: 8px; 
-            overflow: hidden; 
-            display: none; 
-            line-height: 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-        iframe { width: 100%; border: none; }
-        
-        .hint { font-size: 12px; color: #65676b; margin-top: 10px; }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4">
 
-    <div class="container">
-        <h2>Facebook Player</h2>
-        <input type="text" id="fbInput" placeholder="Paste Reel, Live, or Share link here...">
+    <div class="w-full max-w-2xl mt-10">
+        <h1 class="text-3xl font-bold text-center mb-6 text-blue-500">FB Universal Player</h1>
         
-        <div id="status-badge"></div>
-        
-        <div id="video-box" class="video-box">
-            <iframe id="fbPlayer" src="" 
-                scrolling="no" frameborder="0" allowfullscreen="true" 
-                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-            </iframe>
+        <!-- Input Section -->
+        <div class="flex gap-2 mb-8">
+            <input type="text" id="fbUrl" 
+                placeholder="Paste Reel, Live, or Video URL here..." 
+                class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:border-blue-500 transition-all">
+            <button onclick="playVideo()" 
+                class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-bold transition-all">
+                PLAY
+            </button>
         </div>
-        
-        <p class="hint">Note: Video must be <b>Public</b> and <b>Embedding Enabled</b> by the creator.</p>
+
+        <!-- Player Area -->
+        <div id="playerWrapper" class="hidden">
+            <div id="vidContainer" class="video-container shadow-2xl">
+                <iframe id="fbIframe" 
+                    src="" 
+                    scrolling="no" 
+                    frameborder="0" 
+                    allowfullscreen="true" 
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                </iframe>
+            </div>
+            
+            <div class="mt-4 flex justify-between items-center text-sm text-gray-400">
+                <p id="statusTxtText">Playing content from Facebook</p>
+                <button onclick="toggleAspect()" class="text-blue-400 hover:underline">Switch Aspect Ratio (16:9 / 9:16)</button>
+            </div>
+        </div>
+
+        <!-- Help Info -->
+        <div id="instructions" class="mt-10 text-gray-500 text-center text-sm">
+            <p>Supports: facebook.com/reels, fb.watch, facebook.com/live, etc.</p>
+            <p class="mt-2 italic text-gray-600">Note: Private videos cannot be played outside of Facebook.</p>
+        </div>
     </div>
 
     <script>
-        const input = document.getElementById('fbInput');
-        const box = document.getElementById('video-box');
-        const player = document.getElementById('fbPlayer');
-        const badge = document.getElementById('status-badge');
+        function playVideo() {
+            const inputUrl = document.getElementById('fbUrl').value.trim();
+            const iframe = document.getElementById('fbIframe');
+            const wrapper = document.getElementById('playerWrapper');
+            const container = document.getElementById('vidContainer');
+            const instructions = document.getElementById('instructions');
 
-        input.addEventListener('input', (e) => {
-            let url = e.target.value.trim();
-            
-            if (url.includes('facebook.com')) {
-                // 1. Clean the URL and handle Mobile links
-                let cleanUrl = url.replace('m.facebook.com', 'www.facebook.com').split('?')[0];
-                let type = "Video";
-                let isReel = false;
-
-                // 2. Logic to "Unpack" Share Links (Fixes the permission error)
-                if (cleanUrl.includes('/share/v/')) {
-                    const videoId = cleanUrl.split('/v/')[1].split('/')[0];
-                    cleanUrl = `https://www.facebook.com/video.php?v=${videoId}`;
-                    type = "Shared Video Found";
-                } 
-                else if (cleanUrl.includes('/share/r/')) {
-                    const reelId = cleanUrl.split('/r/')[1].split('/')[0];
-                    cleanUrl = `https://www.facebook.com/reel/${reelId}`;
-                    type = "Shared Reel Found";
-                    isReel = true;
-                }
-                else if (cleanUrl.includes('/reel/')) {
-                    type = "Reel";
-                    isReel = true;
-                }
-                else if (cleanUrl.includes('/live/') || cleanUrl.includes('/watch')) {
-                    type = "Live / Watch Video";
-                }
-
-                // 3. Update Status Badge
-                badge.innerText = type;
-                badge.className = isReel ? "badge-reel" : "badge-live";
-                badge.style.display = "inline-block";
-
-                // 4. Construct Embed URL
-                const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=0&width=500`;
-                
-                player.src = embedUrl;
-                box.style.display = 'block';
-
-                // 5. Adjust Height based on content type
-                player.style.height = isReel ? "750px" : "315px";
-            } else {
-                badge.style.display = "none";
-                box.style.display = "none";
-                player.src = "";
+            if (!inputUrl) {
+                alert("Please paste a URL first!");
+                return;
             }
+
+            // 1. Clean the URL (Remove tracking parameters like mibextid)
+            try {
+                const urlObj = new URL(inputUrl);
+                // Keep only the main link
+                const cleanUrl = urlObj.origin + urlObj.pathname + (urlObj.searchParams.get('v') ? '?v=' + urlObj.searchParams.get('v') : '');
+                
+                // 2. Encode for the Facebook Plugin
+                const encodedUrl = encodeURIComponent(inputUrl);
+                
+                // 3. Set the official Facebook Embed Plugin Source
+                const embedSrc = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1`;
+
+                // 4. Auto-detect if it's a Reel for Aspect Ratio
+                if (inputUrl.includes('reels') || inputUrl.includes('reel')) {
+                    container.classList.add('portrait');
+                } else {
+                    container.classList.remove('portrait');
+                }
+
+                // 5. Update UI
+                iframe.src = embedSrc;
+                wrapper.classList.remove('hidden');
+                instructions.classList.add('hidden');
+            } catch (e) {
+                alert("Invalid URL format. Please copy a link from Facebook.");
+            }
+        }
+
+        function toggleAspect() {
+            const container = document.getElementById('vidContainer');
+            container.classList.toggle('portrait');
+        }
+
+        // Allow "Enter" key to trigger play
+        document.getElementById('fbUrl').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') playVideo();
         });
     </script>
 </body>
