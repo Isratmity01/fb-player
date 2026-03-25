@@ -3,43 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta name="referrer" content="always">
     <title>FB Player Pro</title>
     <style>
-        :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-red: #fa3e3e; }
-        body { font-family: -apple-system, sans-serif; background: var(--fb-bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 550px; text-align: center; }
-        input { width: 100%; box-sizing: border-box; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; outline: none; }
-        input:focus { border-color: var(--fb-blue); }
-        
-        #status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 20px; display: none; text-transform: uppercase; }
-        .badge-reel { background: #e7f3ff; color: var(--fb-blue); }
-        .badge-live { background: #ffebe9; color: var(--fb-red); }
-
-        .video-box { width: 100%; background: #000; border-radius: 8px; overflow: hidden; display: none; min-height: 315px; }
-        .hint { font-size: 12px; color: #65676b; margin-top: 15px; }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        input { width: 100%; box-sizing: border-box; padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 20px; }
+        .video-box { width: 100%; background: #000; border-radius: 8px; overflow: hidden; display: none; line-height: 0; }
+        iframe { width: 100%; border: none; min-height: 315px; }
     </style>
 </head>
 <body>
 
-    <div id="fb-root"></div>
-    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v21.0&appId=809261578856144"></script>
-
     <div class="container">
-        <h2>Facebook Player</h2>
-        <input type="text" id="fbInput" placeholder="Paste link (Reel, Live, or Share) here...">
+        <h2 style="color: #1877f2;">Facebook Player</h2>
+        <input type="text" id="fbInput" placeholder="Paste link here...">
         
-        <div id="status-badge"></div>
-        
-        <div id="video-box" class="video-box">
-            <div id="video-target"></div>
+        <div id="video-display" class="video-box">
+            <iframe id="fbPlayer" src="" 
+                scrolling="no" frameborder="0" allowfullscreen="true" 
+                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+            </iframe>
         </div>
-        
-        <p class="hint">App ID: 809261578856144 Active</p>
     </div>
 
     <script>
         const input = document.getElementById('fbInput');
-        const box = document.getElementById('video-box');
-        const target = document.getElementById('video-target');
-        const badge = document.getElementById('status-
+        const display = document.getElementById('video-display');
+        const player = document.getElementById('fbPlayer');
+
+        input.addEventListener('input', (e) => {
+            let url = e.target.value.trim();
+            if (url.includes('facebook.com')) {
+                // 1. Convert mobile and share links to desktop-friendly format
+                let cleanUrl = url.replace('m.facebook.com', 'www.facebook.com').split('?')[0];
+
+                if (cleanUrl.includes('/share/v/')) {
+                    const id = cleanUrl.split('/v/')[1].split('/')[0];
+                    cleanUrl = `https://www.facebook.com/video.php?v=${id}`;
+                } 
+                else if (cleanUrl.includes('/share/r/')) {
+                    const id = cleanUrl.split('/r/')[1].split('/')[0];
+                    cleanUrl = `https://www.facebook.com/reel/${id}`;
+                }
+
+                // 2. The Secret Sauce: Include your App ID in the URL itself
+                const appId = '809261578856144';
+                const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=0&width=500&appId=${appId}`;
+                
+                player.src = embedUrl;
+                display.style.display = 'block';
+
+                // 3. Height adjustment
+                player.style.height = cleanUrl.includes('/reel/') ? "750px" : "315px";
+            }
+        });
+    </script>
+</body>
+</html>
