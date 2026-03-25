@@ -3,73 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="referrer" content="always">
-    <title>FB Universal Player v2</title>
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <title>FB Live & Reel Player</title>
     <style>
-        :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; }
-        body { font-family: -apple-system, sans-serif; background: var(--fb-bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
-        input { width: 100%; box-sizing: border-box; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; outline: none; }
-        #status-msg { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 20px; display: none; text-transform: uppercase; }
-        .status-active { background: #e7f3ff; color: var(--fb-blue); }
-        .video-box { width: 100%; background: #000; border-radius: 8px; overflow: hidden; display: none; line-height: 0; }
+        :root {
+            --fb-blue: #1877f2;
+            --fb-bg: #f0f2f5;
+            --fb-red: #fa3e3e;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--fb-bg); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            margin: 0;
+        }
+        .container { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 550px; 
+            text-align: center; 
+        }
+        h2 { color: var(--fb-blue); margin-top: 0; }
+        input { 
+            width: 100%; 
+            box-sizing: border-box; 
+            padding: 15px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            margin-bottom: 10px; 
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus { border-color: var(--fb-blue); }
+
+        /* Status Badge */
+        #status-badge { 
+            display: inline-block; 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            margin-bottom: 20px; 
+            display: none; 
+            text-transform: uppercase;
+        }
+        .badge-reel { background: #e7f3ff; color: var(--fb-blue); }
+        .badge-live { background: #ffebe9; color: var(--fb-red); }
+
+        .video-box { 
+            width: 100%; 
+            background: #000; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            display: none; 
+            line-height: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
         iframe { width: 100%; border: none; }
+        
+        .hint { font-size: 12px; color: #65676b; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2 style="color: var(--fb-blue); margin-top: 0;">FB Universal Player</h2>
-        <input type="text" id="fbInput" placeholder="Paste link here...">
-        <div id="status-msg" class="status-active"></div>
+    <div class="container">
+        <h2>Facebook Player</h2>
+        <input type="text" id="fbInput" placeholder="Paste Reel, Live, or Share link here...">
         
-        <div id="video-display" class="video-box">
-            <iframe id="fbPlayer" src="" scrolling="no" frameborder="0" allowfullscreen="true" 
+        <div id="status-badge"></div>
+        
+        <div id="video-box" class="video-box">
+            <iframe id="fbPlayer" src="" 
+                scrolling="no" frameborder="0" allowfullscreen="true" 
                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
             </iframe>
         </div>
+        
+        <p class="hint">Note: Video must be <b>Public</b> and <b>Embedding Enabled</b> by the creator.</p>
     </div>
 
     <script>
         const input = document.getElementById('fbInput');
-        const display = document.getElementById('video-display');
+        const box = document.getElementById('video-box');
         const player = document.getElementById('fbPlayer');
-        const status = document.getElementById('status-msg');
+        const badge = document.getElementById('status-badge');
 
         input.addEventListener('input', (e) => {
-            let rawUrl = e.target.value.trim();
-            if (rawUrl.includes('facebook.com')) {
-                let cleanUrl = rawUrl.split('?')[0];
-                let finalUrl = cleanUrl;
+            let url = e.target.value.trim();
+            
+            if (url.includes('facebook.com')) {
+                // 1. Clean the URL and handle Mobile links
+                let cleanUrl = url.replace('m.facebook.com', 'www.facebook.com').split('?')[0];
+                let type = "Video";
                 let isReel = false;
 
-                // IMPROVED PARSER: Use /watch/ format for maximum compatibility
+                // 2. Logic to "Unpack" Share Links (Fixes the permission error)
                 if (cleanUrl.includes('/share/v/')) {
-                    const id = cleanUrl.split('/v/')[1].split('/')[0];
-                    finalUrl = `https://www.facebook.com/watch/?v=${id}`;
-                    status.innerText = "Unpacked Share Video";
+                    const videoId = cleanUrl.split('/v/')[1].split('/')[0];
+                    cleanUrl = `https://www.facebook.com/video.php?v=${videoId}`;
+                    type = "Shared Video Found";
                 } 
                 else if (cleanUrl.includes('/share/r/')) {
-                    const id = cleanUrl.split('/r/')[1].split('/')[0];
-                    finalUrl = `https://www.facebook.com/reel/${id}`;
-                    status.innerText = "Unpacked Share Reel";
+                    const reelId = cleanUrl.split('/r/')[1].split('/')[0];
+                    cleanUrl = `https://www.facebook.com/reel/${reelId}`;
+                    type = "Shared Reel Found";
                     isReel = true;
                 }
                 else if (cleanUrl.includes('/reel/')) {
-                    status.innerText = "Direct Reel Detected";
+                    type = "Reel";
                     isReel = true;
                 }
-                else {
-                    status.innerText = "Direct Video Detected";
+                else if (cleanUrl.includes('/live/') || cleanUrl.includes('/watch')) {
+                    type = "Live / Watch Video";
                 }
 
-                status.style.display = "inline-block";
-                display.style.display = 'block';
+                // 3. Update Status Badge
+                badge.innerText = type;
+                badge.className = isReel ? "badge-reel" : "badge-live";
+                badge.style.display = "inline-block";
 
-                // Construct Embed URL with your App ID
-                const appId = '809261578856144';
-                player.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(finalUrl)}&show_text=0&width=500&appId=${appId}`;
+                // 4. Construct Embed URL
+                const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=0&width=500`;
+                
+                player.src = embedUrl;
+                box.style.display = 'block';
+
+                // 5. Adjust Height based on content type
                 player.style.height = isReel ? "750px" : "315px";
+            } else {
+                badge.style.display = "none";
+                box.style.display = "none";
+                player.src = "";
             }
         });
     </script>
