@@ -4,20 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="always">
-    <title>FB Player Pro</title>
+    <title>FB Universal Player</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
-        input { width: 100%; box-sizing: border-box; padding: 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 20px; }
-        .video-box { width: 100%; background: #000; border-radius: 8px; overflow: hidden; display: none; line-height: 0; }
-        iframe { width: 100%; border: none; min-height: 315px; }
+        :root { --fb-blue: #1877f2; --fb-bg: #f0f2f5; --fb-red: #fa3e3e; --fb-green: #31a24c; }
+        body { font-family: -apple-system, sans-serif; background: var(--fb-bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        
+        input { width: 100%; box-sizing: border-box; padding: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; outline: none; }
+        input:focus { border-color: var(--fb-blue); }
+
+        /* Status Indicator Styling */
+        #status-msg { 
+            display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; 
+            font-weight: bold; margin-bottom: 20px; display: none; text-transform: uppercase;
+        }
+        .status-processing { background: #fffbe6; color: #d48806; }
+        .status-ready { background: #e7f3ff; color: var(--fb-blue); }
+        .status-live { background: #ffebe9; color: var(--fb-red); }
+
+        .video-box { width: 100%; background: #000; border-radius: 8px; overflow: hidden; display: none; line-height: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        iframe { width: 100%; border: none; transition: height 0.3s ease; }
+        .hint { font-size: 11px; color: #65676b; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2 style="color: #1877f2;">Facebook Player</h2>
-        <input type="text" id="fbInput" placeholder="Paste link here...">
+    <div class="card">
+        <h2 style="color: var(--fb-blue); margin-top: 0;">FB Universal Player</h2>
+        <input type="text" id="fbInput" placeholder="Paste Share, Reel, or Video link...">
+        
+        <div id="status-msg"></div>
         
         <div id="video-display" class="video-box">
             <iframe id="fbPlayer" src="" 
@@ -25,37 +41,64 @@
                 allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
             </iframe>
         </div>
+        
+        <p class="hint">Using App ID: 809261578856144</p>
     </div>
 
     <script>
         const input = document.getElementById('fbInput');
         const display = document.getElementById('video-display');
         const player = document.getElementById('fbPlayer');
+        const status = document.getElementById('status-msg');
 
         input.addEventListener('input', (e) => {
-            let url = e.target.value.trim();
-            if (url.includes('facebook.com')) {
-                // 1. Convert mobile and share links to desktop-friendly format
-                let cleanUrl = url.replace('m.facebook.com', 'www.facebook.com').split('?')[0];
+            let rawUrl = e.target.value.trim();
+            
+            if (rawUrl.includes('facebook.com')) {
+                status.style.display = "inline-block";
+                status.innerText = "Processing Link...";
+                status.className = "status-processing";
 
+                // 1. Clean the URL and handle Mobile redirects
+                let cleanUrl = rawUrl.replace('m.facebook.com', 'www.facebook.com').split('?')[0];
+                let finalUrl = cleanUrl;
+                let isReel = false;
+
+                // 2. UNIVERSAL PARSER: Handles /share/v/, /share/r/, /reel/, and /videos/
                 if (cleanUrl.includes('/share/v/')) {
                     const id = cleanUrl.split('/v/')[1].split('/')[0];
-                    cleanUrl = `https://www.facebook.com/video.php?v=${id}`;
+                    finalUrl = `https://www.facebook.com/video.php?v=${id}`;
+                    status.innerText = "Unpacked Share Video";
                 } 
                 else if (cleanUrl.includes('/share/r/')) {
                     const id = cleanUrl.split('/r/')[1].split('/')[0];
-                    cleanUrl = `https://www.facebook.com/reel/${id}`;
+                    finalUrl = `https://www.facebook.com/reel/${id}`;
+                    status.innerText = "Unpacked Share Reel";
+                    isReel = true;
+                }
+                else if (cleanUrl.includes('/reel/')) {
+                    status.innerText = "Direct Reel Detected";
+                    isReel = true;
+                }
+                else {
+                    status.innerText = "Direct Video Detected";
                 }
 
-                // 2. The Secret Sauce: Include your App ID in the URL itself
+                status.classList.add(isReel ? "status-ready" : "status-live");
+
+                // 3. Build Embed URL with App ID
                 const appId = '809261578856144';
-                const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}&show_text=0&width=500&appId=${appId}`;
+                const embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(finalUrl)}&show_text=0&width=500&appId=${appId}`;
                 
                 player.src = embedUrl;
                 display.style.display = 'block';
 
-                // 3. Height adjustment
-                player.style.height = cleanUrl.includes('/reel/') ? "750px" : "315px";
+                // 4. Set Height: Vertical for Reels, Horizontal for Videos
+                player.style.height = isReel ? "750px" : "315px";
+            } else {
+                status.style.display = "none";
+                display.style.display = "none";
+                player.src = "";
             }
         });
     </script>
